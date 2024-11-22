@@ -49,7 +49,7 @@ typedef  u_int32_t u32;
 #define DEFAULT_MAJOR_ROOT 0
 #define DEFAULT_MINOR_ROOT 0
 
-/* Minimal number of setup sectors (see also bootsect.S) */
+/* Minimal number of setup sectors (see also bootsect.ss) */
 
 byte buf[1024];
 int fd;

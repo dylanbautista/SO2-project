@@ -21,7 +21,7 @@ INCLUDEDIR = include
 JP =
 
 CFLAGS = -O2  -g $(JP) -fno-omit-frame-pointer -ffreestanding -Wall -I$(INCLUDEDIR)
-ASMFLAGS = -I$(INCLUDEDIR)
+ASMFLAGS = -I$(INCLUDEDIR) -x assembler-with-cpp
 SYSLDFLAGS = -T system.lds
 USRLDFLAGS = -T user.lds
 LINKFLAGS = -g
@@ -46,22 +46,22 @@ build: build.c
 bootsect: bootsect.o
 	$(LD86) -s -o $@ $<
 
-bootsect.o: bootsect.s
+bootsect.o: bootsect.ss
 	$(AS86) -o $@ $<
 
-bootsect.s: bootsect.S Makefile
+bootsect.s: bootsect.ss Makefile
 	$(CPP) $(ASMFLAGS) -traditional $< -o $@
 
-entry.s: entry.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
+entry.s: entry.ss $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
 
-user-utils.s: user-utils.S $(INCLUDEDIR)/asm.h
+user-utils.s: user-utils.ss $(INCLUDEDIR)/asm.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
 
-kernel-utils.s: kernel-utils.S $(INCLUDEDIR)/asm.h
+kernel-utils.s: kernel-utils.ss $(INCLUDEDIR)/asm.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
 
-sys_call_table.s: sys_call_table.S $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
+sys_call_table.s: sys_call_table.ss $(INCLUDEDIR)/asm.h $(INCLUDEDIR)/segment.h
 	$(CPP) $(ASMFLAGS) -o $@ $<
 
 user.o:user.c $(INCLUDEDIR)/libc.h
