@@ -46,7 +46,7 @@ build: build.c
 bootsect: bootsect.o
 	$(LD86) -s -o $@ $<
 
-bootsect.o: bootsect.ss
+bootsect.o: bootsect.s
 	$(AS86) -o $@ $<
 
 bootsect.s: bootsect.ss Makefile

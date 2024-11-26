@@ -4,8 +4,12 @@
 
 #include <circular_buffer.h>
 
+void INIT_CIRCULAR_BUFFER(struct buffer_circular * buff) {
+
+}
+
 char circular_buffer_pop(struct buffer_circular * buff) {
-    buff.
+    
 
 }
 
