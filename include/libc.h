@@ -22,6 +22,8 @@ int getpid();
 
 int fork();
 
+int getKey(char* b, int timeout);
+
 void exit();
 
 int yield();
