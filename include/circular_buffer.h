@@ -9,18 +9,19 @@
 #include <segment.h>
 #include <types.h>
 
-#define MIDA_BUFFER 50
+#define BUFFER_SIZE 3
 
-struct buffer_circular {
+struct circular_buffer {
     int head;
     int tail;
-    int size;
-    char buffer[MIDA_BUFFER];
+    int num_elem;
+    char buffer[BUFFER_SIZE];
 };
 
-char circular_buffer_pop(struct buffer_circular * buff);
-void circular_buffer_push(struct buffer_circular * buff, char c);
-int circular_buffer_full(struct buffer_circular * buff);
-int circular_buffer_empty(struct buffer_circular * buff);
+void INIT_CIRCULAR_BUFFER(struct circular_buffer * buff);
+char circular_buffer_pop(struct circular_buffer * buff);
+int circular_buffer_push(struct circular_buffer * buff, char c);
+int circular_buffer_full(struct circular_buffer * buff);
+int circular_buffer_empty(struct circular_buffer * buff);
 
 #endif //_ZEOS_CIRCULAR_BUFFER_H
