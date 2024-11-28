@@ -189,7 +189,7 @@ int sys_getKey(char* b, int timeout) {
   int initial_ticks = zeos_ticks;
   key_pressed_flag = 0;
   int event_ticks;
-  while (((event_ticks = zeos_ticks) < initial_ticks + timeout) &
+  while (((event_ticks = zeos_ticks) < initial_ticks + timeout) &&
           !key_pressed_flag
         );
 
@@ -197,6 +197,7 @@ int sys_getKey(char* b, int timeout) {
   
   unsigned char c = inb(0x60);
   circular_buffer_push(&keyboard_buffer, c);
+  *b = c;
   key_pressed_flag = 0;
 
   return 0;

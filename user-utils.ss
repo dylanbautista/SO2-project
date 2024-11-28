@@ -34,7 +34,7 @@ ENTRY(write)
 ENTRY(getKey)
 	pushl %ebp
 	mov %esp, %ebp
-	push %ebx
+	pushl %ebx
 	movl $6, %eax
 	movl 0x8(%ebp), %ebx; //b pointer
 	movl 0xC(%ebp), %ecx; //timeout
