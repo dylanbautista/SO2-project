@@ -14,6 +14,10 @@ void INIT_CIRCULAR_BUFFER(struct circular_buffer * buff) {
     buff->num_elem = 0;
 }
 
+/**
+ * circular_buffer_pop - Pops a character from the circular buffer, if not empty.
+ * @buff: target circular buffer
+ */
 char circular_buffer_pop(struct circular_buffer * buff) {
     if (!circular_buffer_empty(buff)) { //If buffer is not empty
         int last_head = buff->head; //Save last head position
@@ -29,6 +33,10 @@ char circular_buffer_pop(struct circular_buffer * buff) {
     }
 }
 
+/**
+ * circular_buffer_push - Pushes a character to the circular buffer, if not full.
+ * @buff: target circular buffer
+ */
 int circular_buffer_push(struct circular_buffer * buff, char c) {
     if (!circular_buffer_full(buff)) { //If buffer is not full
         if (buff->tail < BUFFER_SIZE - 1) { //If tail is not at the end of the array
