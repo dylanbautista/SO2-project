@@ -13,6 +13,8 @@
 
 #include <sched.h>
 
+#include <circular_buffer.h>
+
 #include <p_stats.h>
 
 #include <errno.h>
@@ -179,8 +181,26 @@ int ret;
 	return (nbytes-bytes_left);
 }
 
-
 extern int zeos_ticks;
+extern struct circular_buffer keyboard_buffer;
+int key_pressed_flag = 0;
+
+int sys_getKey(char* b, int timeout) {
+  int initial_ticks = zeos_ticks;
+  key_pressed_flag = 0;
+  int event_ticks;
+  while (((event_ticks = zeos_ticks) < initial_ticks + timeout) &
+          !key_pressed_flag
+        );
+
+  if (!key_pressed_flag) return -1;
+  
+  unsigned char c = inb(0x60);
+  circular_buffer_push(&keyboard_buffer, c);
+  key_pressed_flag = 0;
+
+  return 0;
+}
 
 int sys_gettime()
 {

@@ -30,6 +30,21 @@ ENTRY(write)
 	popl %ebp
 	ret
 
+/* int getKey(char* b, int timeout) */
+ENTRY(getKey)
+	pushl %ebp
+	mov %esp, %ebp
+	push %ebx
+	movl $6, %eax
+	movl 0x8(%ebp), %ebx; //b pointer
+	movl 0xC(%ebp), %ecx; //timeout
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok
+	popl %ebp
+	ret
+
 /* Common code for negative return */
 nok:
 	neg %eax

@@ -11,6 +11,7 @@
 #include <mm.h>
 #include <io.h>
 #include <utils.h>
+#include <keyboard.h>
 //#include <zeos_mm.h> /* TO BE DELETED WHEN ADDED THE PROCESS MANAGEMENT CODE TO BECOME MULTIPROCESS */
 
 
@@ -18,6 +19,8 @@ int (*usr_main)(void) = (void *) PH_USER_START;
 unsigned int *p_sys_size = (unsigned int *) KERNEL_START;
 unsigned int *p_usr_size = (unsigned int *) KERNEL_START+1;
 unsigned int *p_rdtr = (unsigned int *) KERNEL_START+2;
+
+extern struct circular_buffer keyboard_buffer;
 
 /************************/
 /** Auxiliar functions **/
@@ -89,11 +92,13 @@ int __attribute__((__section__(".text.main")))
 
   /* Initialize Scheduling */
   init_sched();
-
   /* Initialize idle task  data */
   init_idle();
   /* Initialize task 1 data */
   init_task1();
+
+  /* Initialize keyboard circular buffer */
+  INIT_CIRCULAR_BUFFER(&keyboard_buffer);
 
   /* Move user code/data now (after the page table initialization) */
   copy_data((void *) KERNEL_START + *p_sys_size, usr_main, *p_usr_size);
