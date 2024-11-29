@@ -185,6 +185,7 @@ int ret;
 }
 
 extern struct list_head blocked;
+extern struct list_head getKey_blocked;
 
 int sys_block() {
 
@@ -201,20 +202,24 @@ int sys_block() {
 extern int zeos_ticks;
 extern struct circular_buffer keyboard_buffer;
 
-
 int sys_getKey(char* b, int timeout) {
+
+  if (!access_ok(VERIFY_WRITE, b, sizeof(char))) return -EFAULT;
+
   current()->pressed_key = NULL;
-  current()->waiting_for_key = 1;
   current()->key_timeout = timeout;
 
-  sys_block();
+  //Block process. To the getKey_blocked list.
+  update_process_state_rr(current(), &getKey_blocked);
+  sched_next_rr();
 
-  if (current()->pressed_key == NULL) return -1;
+  if (current()->key_timeout == 0) return -ETIME;
 
-  circular_buffer_push(&keyboard_buffer, current()->pressed_key);
+  char c = circular_buffer_pop(&keyboard_buffer);
 
-  //Making an access to user space...
-  copy_to_user(&current()->pressed_key, b, sizeof(char));
+  if ((int) c == -1) return -1;
+
+  copy_to_user(&c, b, sizeof(char));
 
   return 0;
 }

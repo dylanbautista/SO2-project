@@ -28,6 +28,7 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 #endif
 
 extern struct list_head blocked;
+extern struct list_head getKey_blocked;
 
 // Free task structs
 struct list_head freequeue;
@@ -230,6 +231,7 @@ void init_sched()
   init_freequeue();
   INIT_LIST_HEAD(&readyqueue);
   INIT_LIST_HEAD(&blocked);
+  INIT_LIST_HEAD(&getKey_blocked);
 }
 
 struct task_struct* current()

@@ -9,7 +9,7 @@
 #include <segment.h>
 #include <types.h>
 
-#define BUFFER_SIZE 3
+#define BUFFER_SIZE 50
 
 struct circular_buffer {
     int head;

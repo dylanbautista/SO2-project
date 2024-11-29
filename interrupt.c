@@ -6,6 +6,7 @@
 #include <segment.h>
 #include <hardware.h>
 #include <sched.h>
+#include <circular_buffer.h>
 #include <io.h>
 
 #include <sched.h>
@@ -34,6 +35,7 @@ char char_map[] =
 
 int zeos_ticks = 0;
 extern struct list_head blocked;
+extern struct list_head getKey_blocked;
 
 //Temp systems
 
@@ -43,16 +45,15 @@ void key_timout_system() {
 
   //Search for a process that's waiting a key.
   //Linear search, not good if there are too many blocked processors...
-  list_for_each_safe(cursor, next, &blocked) {
+  list_for_each_safe(cursor, next, &getKey_blocked) {
     struct task_struct * cursor_ts = list_head_to_task_struct(cursor);
-    if (cursor_ts->waiting_for_key && cursor_ts->key_timeout > 0) {
+    if (cursor_ts->key_timeout > 0) {
       cursor_ts->key_timeout--;
       if (cursor_ts->key_timeout == 0) {
         update_process_state_rr(cursor_ts, &readyqueue); //Put process to ready queue
       }
     }
   }
-
 }
 
 
@@ -66,6 +67,8 @@ void clock_routine()
   schedule();
 }
 
+extern struct circular_buffer keyboard_buffer;
+
 void keyboard_routine()
 {
   unsigned char c = inb(0x60);
@@ -75,12 +78,13 @@ void keyboard_routine()
 
   //Search for a process that's waiting a key.
   //Linear search, not good if there are too many blocked processors...
-  list_for_each_safe(cursor, next, &blocked) {
+  list_for_each_safe(cursor, next, &getKey_blocked) {
     struct task_struct * cursor_ts = list_head_to_task_struct(cursor);
-    if (cursor_ts->waiting_for_key) {
-      cursor_ts->pressed_key = char_map[c&0x7f];
-      update_process_state_rr(cursor_ts, &readyqueue); //Put process to ready queue
+    //cursor_ts->pressed_key = char_map[c&0x7f];
+    if (!circular_buffer_full(&keyboard_buffer)) {
+      circular_buffer_push(&keyboard_buffer, char_map[c&0x7f]);
     }
+    update_process_state_rr(cursor_ts, &readyqueue); //Put process to ready queue
   }
   
   //if (c&0x80) printc_xy(0, 0, char_map[c&0x7f]);
