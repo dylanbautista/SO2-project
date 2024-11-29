@@ -69,6 +69,11 @@
       movb $0x20, %al; \
       outb %al, $0x20;
 
+//Get %eip value from hardware context
+ENTRY(get_ctxt_eip)
+      movl 56(%ebp), %eax;
+      ret;
+
 ENTRY(clock_handler)
       SAVE_ALL
       pushl %eax;
@@ -93,6 +98,12 @@ ENTRY(keyboard_handler)
       call system_to_user;
       popl %eax;
       RESTORE_ALL
+      iret;
+
+ENTRY(page_fault_ext_handler)
+      SAVE_ALL;
+      call page_fault_ext_routine
+      RESTORE_ALL;
       iret;
 
 ENTRY(system_call_handler)

@@ -195,6 +195,8 @@ void init_task1(void)
 
   c->state=ST_RUN;
 
+  c->pending_unblocks=0;
+
   remaining_quantum=c->total_quantum;
 
   init_stats(&c->p_stats);
@@ -227,6 +229,7 @@ void init_sched()
 {
   init_freequeue();
   INIT_LIST_HEAD(&readyqueue);
+  INIT_LIST_HEAD(&blocked);
 }
 
 struct task_struct* current()

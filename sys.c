@@ -15,6 +15,8 @@
 
 #include <circular_buffer.h>
 
+#include <list.h>
+
 #include <p_stats.h>
 
 #include <errno.h>
@@ -127,6 +129,7 @@ int sys_fork(void)
 
   uchild->task.PID=++global_PID;
   uchild->task.state=ST_READY;
+  uchild->task.pending_unblocks=0;
 
   int register_ebp;		/* frame pointer */
   /* Map Parent's ebp to child's stack */
@@ -181,24 +184,37 @@ int ret;
 	return (nbytes-bytes_left);
 }
 
+extern struct list_head blocked;
+
+int sys_block() {
+
+  if (current()->pending_unblocks == 0) {
+    update_process_state_rr(current(), &blocked);
+    sched_next_rr();
+  } else {
+    if (current()->pending_unblocks > 0) --(current()->pending_unblocks);
+  }
+
+  return 0;
+}
+
 extern int zeos_ticks;
 extern struct circular_buffer keyboard_buffer;
-int key_pressed_flag = 0;
+
 
 int sys_getKey(char* b, int timeout) {
-  int initial_ticks = zeos_ticks;
-  key_pressed_flag = 0;
-  int event_ticks;
-  while (((event_ticks = zeos_ticks) < initial_ticks + timeout) &&
-          !key_pressed_flag
-        );
+  current()->pressed_key = NULL;
+  current()->waiting_for_key = 1;
+  current()->key_timeout = timeout;
 
-  if (!key_pressed_flag) return -1;
-  
-  unsigned char c = inb(0x60);
-  circular_buffer_push(&keyboard_buffer, c);
-  *b = c;
-  key_pressed_flag = 0;
+  sys_block();
+
+  if (current()->pressed_key == NULL) return -1;
+
+  circular_buffer_push(&keyboard_buffer, current()->pressed_key);
+
+  //Making an access to user space...
+  copy_to_user(&current()->pressed_key, b, sizeof(char));
 
   return 0;
 }

@@ -82,6 +82,18 @@ ENTRY(fork)
 	popl %ebp
 	ret
 
+/* void block(void) */
+ENTRY(block)
+	pushl %ebp
+	movl %esp, %ebp
+	movl $7, %eax
+	call syscall_sysenter
+	test %eax, %eax
+	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+
 /* void exit() */
 ENTRY(exit)
 	pushl %ebp

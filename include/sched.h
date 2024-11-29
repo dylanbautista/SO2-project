@@ -24,6 +24,11 @@ struct task_struct {
   enum state_t state;		/* State of the process */
   int total_quantum;		/* Total quantum of the process */
   struct stats p_stats;		/* Process stats */
+  int pending_unblocks;
+  //getKey
+  int waiting_for_key;
+  char pressed_key;
+  int key_timeout;
 };
 
 union task_union {
