@@ -72,21 +72,16 @@ extern struct circular_buffer keyboard_buffer;
 void keyboard_routine()
 {
   unsigned char c = inb(0x60);
-
-  struct list_head * cursor;
-  struct list_head * next;
-
-  //Search for a process that's waiting a key.
-  //Linear search, not good if there are too many blocked processors...
-  list_for_each_safe(cursor, next, &getKey_blocked) {
-    struct task_struct * cursor_ts = list_head_to_task_struct(cursor);
-    //cursor_ts->pressed_key = char_map[c&0x7f];
+  
+  //getKey
+  if (!list_empty(&getKey_blocked)) {
+    struct task_struct * ts = list_head_to_task_struct(list_first(&getKey_blocked));
     if (!circular_buffer_full(&keyboard_buffer)) {
       circular_buffer_push(&keyboard_buffer, char_map[c&0x7f]);
+      update_process_state_rr(ts, &readyqueue); //Put process to ready queue
     }
-    update_process_state_rr(cursor_ts, &readyqueue); //Put process to ready queue
   }
-  
+
   //if (c&0x80) printc_xy(0, 0, char_map[c&0x7f]);
 }
 
