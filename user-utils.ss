@@ -30,6 +30,50 @@ ENTRY(write)
 	popl %ebp
 	ret
 
+/* int gotoXY(int x, int y) */
+ENTRY(gotoXY)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $4, %eax
+	movl 0x8(%ebp), %ebx;	//X
+	movl 0xC(%ebp), %ecx;	//Y
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+/* int changeColor(color_t fg, color_t bg) */
+ENTRY(changeColor)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $4, %eax
+	movl 0x8(%ebp), %ebx;	//fg
+	movl 0xC(%ebp), %ecx;	//bg
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+/* int clrscr(Word* b) */
+ENTRY(clrscr)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $15, %eax
+	movl 0x8(%ebp), %ebx;	//Word*
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
 /* int getKey(char* b, int timeout) */
 ENTRY(getKey)
 	pushl %ebp
