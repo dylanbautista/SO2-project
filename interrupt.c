@@ -44,7 +44,7 @@ void key_timout_system() {
   struct list_head * next;
 
   //Search for a process that's waiting a key.
-  //Linear search, not good if there are too many blocked processors...
+  //Linear, not good if there are too many blocked processes...
   list_for_each_safe(cursor, next, &getKey_blocked) {
     struct task_struct * cursor_ts = list_head_to_task_struct(cursor);
     if (cursor_ts->key_timeout > 0) {
@@ -67,20 +67,34 @@ void clock_routine()
   schedule();
 }
 
+int pending_to_service = 0; //Processes that are ready and have a corresponding char.
 extern struct circular_buffer keyboard_buffer;
+
+int make_flag = 1;
 
 void keyboard_routine()
 {
+  printk("Received an interrupt!\n");
   unsigned char c = inb(0x60);
-  
-  //getKey
-  if (!list_empty(&getKey_blocked)) {
-    struct task_struct * ts = list_head_to_task_struct(list_first(&getKey_blocked));
+
+  if (make_flag) {
+    //Push the obtained character to the circular buffer, if not full.
     if (!circular_buffer_full(&keyboard_buffer)) {
       circular_buffer_push(&keyboard_buffer, char_map[c&0x7f]);
-      update_process_state_rr(ts, &readyqueue); //Put process to ready queue
     }
+
+    //Unblock the first process from getKey_blocked.
+    if (!list_empty(&getKey_blocked)) {
+      struct task_struct * ts = list_head_to_task_struct(list_first(&getKey_blocked));
+      update_process_state_rr(ts, &readyqueue); //Put process to ready queue
+      pending_to_service++;
+      
+    }
+    make_flag = 0;
+  } else {
+    make_flag = 1;
   }
+
 
   //if (c&0x80) printc_xy(0, 0, char_map[c&0x7f]);
 }

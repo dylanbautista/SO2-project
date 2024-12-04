@@ -15,6 +15,8 @@
 
 #include <circular_buffer.h>
 
+#include <screen_matrix.h>
+
 #include <list.h>
 
 #include <p_stats.h>
@@ -201,32 +203,42 @@ int sys_block() {
 
 extern int zeos_ticks;
 extern struct circular_buffer keyboard_buffer;
+extern int pending_to_service;
 
 int sys_getKey(char* b, int timeout) {
 
   if (!access_ok(VERIFY_WRITE, b, sizeof(char))) return -EFAULT;
-
-  current()->pressed_key = NULL;
   current()->key_timeout = timeout;
 
-  //Block process. To the getKey_blocked list.
-  update_process_state_rr(current(), &getKey_blocked);
-  sched_next_rr();
+  //Block process, to the getKey_blocked list, if:
+  //1. There are ready processes pending to get a char from the buffer.
+  //2. No chars are available in the buffer. 
+  //3. There are processes already blocked.
+  if (pending_to_service > 0 || circular_buffer_empty(&keyboard_buffer) || !list_empty(&getKey_blocked)) {
+    update_process_state_rr(current(), &getKey_blocked);
+    sched_next_rr();
+  }
 
-  if (current()->key_timeout == 0) return -ETIME;
+  if (current()->key_timeout <= 0) return -ETIME;
+
+  pending_to_service--; //process has been served 
 
   char c = circular_buffer_pop(&keyboard_buffer);
 
-  if ((int) c == -1) return -1;
+  if ((int) c == -1) return -EAGAIN;
 
   copy_to_user(&c, b, sizeof(char));
-
   return 0;
 }
 
 int sys_gettime()
 {
   return zeos_ticks;
+}
+
+int sys_clrscr(screen_matrix* b) {
+  
+  return 0;
 }
 
 void sys_exit()

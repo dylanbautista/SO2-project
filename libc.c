@@ -4,8 +4,6 @@
 
 #include <libc.h>
 
-#include <types.h>
-
 int errno;
 int REGS[7]; // Space to save REGISTERS
 

@@ -7,6 +7,7 @@
 #define __LIBC_H__
 
 #include <stats.h>
+#include <types.h>
 
 extern int errno;
 
@@ -24,9 +25,13 @@ int fork();
 
 int getKey(char* b, int timeout);
 
+int gettime();
+
 void exit();
 
 int yield();
+
+int clrscr(Word* b);
 
 int get_stats(int pid, struct stats *st);
 

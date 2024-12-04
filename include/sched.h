@@ -26,7 +26,6 @@ struct task_struct {
   struct stats p_stats;		/* Process stats */
   int pending_unblocks;
   //getKey
-  char pressed_key;
   int key_timeout;
 };
 
