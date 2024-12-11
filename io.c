@@ -6,6 +6,8 @@
 
 #include <colors.h>
 
+#include <screen_matrix.h>
+
 #include <types.h>
 
 /**************/
@@ -79,8 +81,6 @@ void printc_xy_color(Byte mx, Byte my, char c)
   y=cy;
 }
 
-
-
 void printc_xy(Byte mx, Byte my, char c)
 {
   Byte cx, cy;
@@ -98,4 +98,22 @@ void printk(char *string)
   int i;
   for (i = 0; string[i]; i++)
     print_color(string[i], Light_Gray,Green, 0);
+}
+
+void clear_screen() {
+  Word *screen = (Word *)0xb8000;
+  for (int i = 0; i < NUM_COLUMNS; ++i) {
+    for (int j = 0; j < NUM_ROWS; ++j) {
+      screen[j * NUM_COLUMNS + i] = 0x00;
+    }
+  } 
+}
+
+void clear_paint_screen(Word matrix[25][80]) {
+  Word *screen = (Word *)0xb8000;
+  for (int i = 0; i < NUM_COLUMNS; ++i) {
+    for (int j = 0; j < NUM_ROWS; ++j) {
+      screen[j * NUM_COLUMNS + i] = matrix[j][i];
+    }
+  } 
 }

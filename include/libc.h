@@ -31,7 +31,7 @@ void exit();
 
 int yield();
 
-int clrscr(Word* b);
+int clrscr(Word b[25][80]);
 
 int get_stats(int pid, struct stats *st);
 

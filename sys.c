@@ -236,8 +236,14 @@ int sys_gettime()
   return zeos_ticks;
 }
 
-int sys_clrscr(screen_matrix* b) {
+int sys_clrscr(screen_matrix b) {
   
+  if (b != NULL) {
+    clear_paint_screen(b);
+  } else {
+    clear_screen();
+  }
+
   return 0;
 }
 
