@@ -35,9 +35,9 @@ ENTRY(gotoXY)
 	pushl %ebp
 	movl %esp, %ebp
 	pushl %ebx;  // Save EBX, ESI and EDI if modified
-	movl $4, %eax
-	movl 0x8(%ebp), %ebx;	//X
-	movl 0xC(%ebp), %ecx;	//Y
+	movl $16, %eax
+	movl 0x8(%ebp), %ecx;	//X
+	movl 0xC(%ebp), %edx;	//Y
 	call syscall_sysenter
 	popl %ebx
 	test %eax, %eax
@@ -50,7 +50,7 @@ ENTRY(changeColor)
 	pushl %ebp
 	movl %esp, %ebp
 	pushl %ebx;  // Save EBX, ESI and EDI if modified
-	movl $4, %eax
+	movl $17, %eax
 	movl 0x8(%ebp), %ebx;	//fg
 	movl 0xC(%ebp), %ecx;	//bg
 	call syscall_sysenter
@@ -123,6 +123,25 @@ ENTRY(fork)
 	call syscall_sysenter
 	test %eax, %eax
 	js nok	// if (eax < 0) -->
+	popl %ebp
+	ret
+
+/* int threadCreateWithStack( void (*function)(void* arg), int N, void* parameter, void (*ext)) */
+ENTRY(threadCreateWithStack)
+	pushl %ebp
+	mov %esp, %ebp
+	pushl %ebx
+	pushl %esi
+	movl $3, %eax
+	movl 0x8(%ebp), %ebx; //function pointer
+	movl 0xC(%ebp), %ecx; //N
+	movl 0x10(%ebp), %edx; //parameter
+	movl 0x14(%ebp), %esi; //exit
+	call syscall_sysenter
+	popl %esi
+	popl %ebx
+	test %eax, %eax
+	js nok
 	popl %ebp
 	ret
 

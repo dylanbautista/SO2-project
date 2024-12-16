@@ -131,6 +131,7 @@ int sys_fork(void)
 
   uchild->task.PID=++global_PID;
   uchild->task.state=ST_READY;
+  uchild->task.master_thread = uchild->task.PID;
   uchild->task.pending_unblocks=0;
 
   int register_ebp;		/* frame pointer */
@@ -155,6 +156,134 @@ int sys_fork(void)
   list_add_tail(&(uchild->task.list), &readyqueue);
   
   return uchild->task.PID;
+}
+
+void print_hex(int hex) {
+  int eip_val = hex; //Get the hardware context's eip value
+  char buff[9] = "00000000";
+  //Convert decimal to hexadecimal (as string);
+  //it uses a friendly algorithm in order to maintain 0's at the beginning
+  //if needed.
+  for (int i = 0; i < 8; i++) {
+    int aux = eip_val;
+    aux = aux >> 28;
+    aux = (0x0000000F) & aux; //base-2 magic
+    if (aux < 10) {
+      buff[i] = '0' + aux;
+    } else {
+      buff[i] = 'A' + (aux - 10);
+    }
+    eip_val = eip_val << 4;
+  }
+
+  printk("\n Value: 0x");
+  printk(buff);
+  printk("\n");
+}
+
+int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* parameter, void (*ext)(void))
+{
+  //Check user parameters
+  //Access ok for function address (read)
+  if (!access_ok(VERIFY_READ, function, sizeof(void*))) return -EFAULT;
+  //N has a suitable value (< TOTAL_PAGES - (NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA))
+  if (N >= TOTAL_PAGES - (NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA)) return -EINVAL;
+
+  //Busquem un thread a la freequeue
+  if (list_empty(&freequeue)) return -ENOMEM;
+
+  struct list_head * newthreadlist = list_first(&freequeue);
+  list_del(newthreadlist);
+  struct task_struct * newthread = list_head_to_task_struct(newthreadlist);
+  union task_union * u_newthread = (union task_union *) newthread;
+
+  copy_data(current(), u_newthread, sizeof(union task_union));
+  //newthread->dir_pages_baseAddr = get_DIR(current());
+  page_table_entry *PT = get_PT(newthread);
+
+  int found = 0;
+
+  int next_start_pos = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA;
+
+  while (!found) { //repeat until found. If not enoguh space, returns.
+    int pag = next_start_pos;
+    int inner_error = 0;
+    for (; pag < TOTAL_PAGES && (pag < next_start_pos + N); pag++) { //Check if gap is large enough
+      if(PT[pag].bits.present != 0) {
+        //Search for a new start position
+        int temp_pag = pag;
+        while (temp_pag < TOTAL_PAGES && PT[temp_pag].bits.present != 0) temp_pag++;
+        if (temp_pag >= TOTAL_PAGES) {inner_error = 1; break;} //Not enough free consecutive pages found
+        next_start_pos = temp_pag; //Start from the new position.
+        break;
+      }
+    }
+    if (pag >= TOTAL_PAGES || inner_error) {
+      // Deallocate task_struct
+      list_add_tail(newthreadlist, &freequeue);
+      //Return error
+      return -EAGAIN;
+    }
+    if (pag >= next_start_pos + N) found = 1; //previous break instruction has not been reached
+  }
+
+  //Busquem allotjar l'espai de 4096*N Bytes per a la User_Stack
+  int new_pag, pag;
+  for (pag = 0; pag < N; ++pag) {
+    new_pag = alloc_frame();
+    if (new_pag != -1) {
+      set_ss_pag(PT, next_start_pos+pag, new_pag);
+    } else {
+      // Deallocate allocated pages. Up to pag.
+      for (int i=0; i<pag; i++)
+      {
+        free_frame(get_frame(PT, next_start_pos+i));
+        del_ss_pag(PT, next_start_pos+i);
+      }
+      // Deallocate task_struct
+      list_add_tail(newthreadlist, &freequeue);
+
+      // Return error 
+      return -EAGAIN; 
+    }
+  }
+
+  //Assignem PID i altres dedes del PCB
+  newthread->PID=++global_PID;
+  newthread->state=ST_READY;
+  newthread->pending_unblocks=0;
+  newthread->master_thread = current()->master_thread;
+
+  int register_ebp;		/* frame pointer */
+  /* Map Parent's ebp to child's stack */
+  register_ebp = (int) get_ebp();
+  register_ebp=(register_ebp - (int)current()) + (int)(u_newthread);
+
+  newthread->register_esp=register_ebp;
+
+  DWord temp_ebp=(DWord) 244003; //Random value for ebp
+  /* Prepare child stack for context switch */
+  *(DWord*)(newthread->register_esp)=(DWord)&ret_from_fork;
+  newthread->register_esp-=sizeof(DWord);
+  *(DWord*)(newthread->register_esp)=temp_ebp;
+
+  init_stats(&(u_newthread->task.p_stats));
+
+  DWord new_esp = (DWord) ((next_start_pos + N) << 12) - 4;
+  
+	//newthread->register_esp = (DWord) &newthread[KERNEL_STACK_SIZE-19];
+  u_newthread->stack[KERNEL_STACK_SIZE - 2] = (DWord) new_esp - 4; //Change user stack address
+  u_newthread->stack[KERNEL_STACK_SIZE - 5] = (DWord) function; //Change saved eip value
+
+  //Prepare child thread user stack
+  copy_to_user(&ext,(void*) new_esp-4,sizeof(DWord)); //Copy exit function to thread's user stack
+  copy_to_user(&parameter,(void*) new_esp,sizeof(DWord)); //Copy parameter to thread's user stack
+
+  //Afegim el thread a la readyqueue i tornem
+  u_newthread->task.state=ST_READY;
+  list_add_tail(newthreadlist, &readyqueue);
+
+  return newthread->PID;
 }
 
 #define TAM_BUFFER 512
@@ -237,12 +366,27 @@ int sys_gettime()
 }
 
 int sys_clrscr(screen_matrix b) {
-  
+
   if (b != NULL) {
     clear_paint_screen(b);
   } else {
     clear_screen();
   }
+
+  return 0;
+}
+
+int sys_gotoXY(int x, int y) {
+
+  if (x > 80 || y > 25 || x < 0 || y < 0) return -EINVAL;
+
+  setXY(x,y);
+
+  return 0;
+}
+
+int sys_changeColor(int fg, int bg) {
+  change_screen_colors(fg, bg);
 
   return 0;
 }

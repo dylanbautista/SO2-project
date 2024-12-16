@@ -20,7 +20,7 @@ INCLUDEDIR = include
 # Define here flags to compile the tests if needed
 JP =
 
-CFLAGS = -O2  -g $(JP) -fno-omit-frame-pointer -ffreestanding -Wall -I$(INCLUDEDIR)
+CFLAGS = -O1  -g $(JP) -fno-omit-frame-pointer -ffreestanding -Wall -I$(INCLUDEDIR)
 ASMFLAGS = -I$(INCLUDEDIR) -x assembler-with-cpp
 SYSLDFLAGS = -T system.lds
 USRLDFLAGS = -T user.lds

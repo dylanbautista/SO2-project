@@ -166,6 +166,7 @@ void init_idle (void)
   union task_union *uc = (union task_union*)c;
 
   c->PID=0;
+  c->master_thread=0;
 
   c->total_quantum=DEFAULT_QUANTUM;
 
@@ -191,6 +192,7 @@ void init_task1(void)
   union task_union *uc = (union task_union*)c;
 
   c->PID=1;
+  c->master_thread=1;
 
   c->total_quantum=DEFAULT_QUANTUM;
 
@@ -249,16 +251,33 @@ struct task_struct* list_head_to_task_struct(struct list_head *l)
 /* Do the magic of a task switch */
 void inner_task_switch(union task_union *new)
 {
-  page_table_entry *new_DIR = get_DIR(&new->task);
+  if (current()->master_thread == new->task.master_thread) { //Then, they share the same address space
 
-  /* Update TSS and MSR to make it point to the new stack */
-  tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
-  setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
+    printk("Same adress space");
 
-  /* TLB flush. New address space */
-  set_cr3(new_DIR);
+    /* Update TSS and MSR to make it point to the new stack */
+    tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
+    setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
 
-  switch_stack(&current()->register_esp, new->task.register_esp);
+    print_hex((int) current()->PID);
+    print_hex((int) new->task.PID);
+
+    switch_stack(&current()->register_esp, new->task.register_esp);
+  } else { //Not the same address space
+    page_table_entry *new_DIR = get_DIR(&new->task);
+
+    /* Update TSS and MSR to make it point to the new stack */
+    tss.esp0=(int)&(new->stack[KERNEL_STACK_SIZE]);
+    setMSR(0x175, 0, (unsigned long)&(new->stack[KERNEL_STACK_SIZE]));
+
+    /* TLB flush. New address space */
+    set_cr3(new_DIR);
+
+    print_hex((int) &current()->register_esp);
+    print_hex((int) new->task.register_esp);
+
+    switch_stack(&current()->register_esp, new->task.register_esp);
+  }
 }
 
 

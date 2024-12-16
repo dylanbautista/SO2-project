@@ -74,7 +74,7 @@ int make_flag = 1;
 
 void keyboard_routine()
 {
-  printk("Received an interrupt!\n");
+  //DEBUG: printk("Received an interrupt!\n");
   unsigned char c = inb(0x60);
 
   if (make_flag) {
@@ -94,8 +94,6 @@ void keyboard_routine()
   } else {
     make_flag = 1;
   }
-
-
   //if (c&0x80) printc_xy(0, 0, char_map[c&0x7f]);
 }
 

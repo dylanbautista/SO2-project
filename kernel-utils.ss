@@ -24,6 +24,22 @@ ENTRY(task_switch)
 	popl %ebp
 	ret
 
+/* void prepare_user_stack(int esp, (void*)function, (void*)parameter); */
+ENTRY(prepare_user_stack)
+	push %ebp
+	movl %esp, %ebp
+
+	movl 0x8(%ebp), %eax //esp
+	movl 0xc(%ebp), %edx //finish function
+	movl 0x10(%ebp), %ecx //parameter
+
+	movl $777, (%eax) //parameter
+	movl $777, -4(%eax) //finish function
+
+	movl %ebp, %esp
+	pop %ebp
+	ret
+
 /* void * get_ebp(void) */
 ENTRY(get_ebp)
 	mov %ebp, %eax

@@ -117,3 +117,21 @@ void clear_paint_screen(Word matrix[25][80]) {
     }
   } 
 }
+
+void setXY(int x_n, int y_n) {
+  x = x_n;
+  y = y_n;
+}
+
+void change_screen_colors(int bg, int fg) {
+  Word *screen = (Word *)0xb8000;
+  for (int i = 0; i < NUM_COLUMNS; ++i) {
+    for (int j = 0; j < NUM_ROWS; ++j) {
+      if (screen[j * NUM_COLUMNS + i] != NULL) {
+        screen[j * NUM_COLUMNS + i] = (screen[j * NUM_COLUMNS + i] & 0x80FF) | ((bg << 8 | fg << 12) & 0x7FFF);
+      } else {
+        screen[j * NUM_COLUMNS + i] = (NULL & 0x80FF) | ((bg << 8 | fg << 12) & 0x7FFF);
+      }
+    }
+  } 
+}

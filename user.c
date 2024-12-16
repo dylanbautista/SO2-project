@@ -13,6 +13,22 @@ static char_mat ascii_art = {
 "                                 \\|_________|"
 };
 
+void inf() {
+  while(1);
+}
+
+void foo(void* param) {
+  char p = 'c';
+  write(1, &p, 1);
+}
+
+void foo2(void* param) {
+  while(1) {
+    char p = 'z';
+    write(1, &p, 1);
+  }
+}
+
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
@@ -30,9 +46,16 @@ int __attribute__ ((__section__(".text.main")))
   
   screen_matrix_compose_char(mat, ascii_art, Yellow, Black);
 
-  clrscr(NULL);
+  clrscr(mat);
+
+  changeColor(Blue, White);
+
+  threadCreateWithStack(&foo, 1, (void*)3, &exit);
+  threadCreateWithStack(&foo2, 1, (void*)3, &inf);
 
   while(1) {
+    char p = 'p';
+    write(1, &p, 1);
     /*char *buffer = "_getKey test;\n";
     write(1, buffer, 15);
     char c = ' ';
