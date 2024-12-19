@@ -19,7 +19,7 @@ static char_mat ascii_art = {
 void foo(void* param) {
   //sem_wait(&s);
   char b;
-  itoa(a, &b);
+  getKey(&b, 10000);
   write(1, &b, sizeof(b));
   semSignal(param);
 }
@@ -49,15 +49,17 @@ int __attribute__ ((__section__(".text.main")))
   a = 0;
   struct semafor *s = sem_create(0);
 
-  threadCreateWithStack(&foo, 1, (void*)s, &exit);
+  //threadCreateWithStack(&foo, 1, (void*)s, &exit);
   //threadCreateWithStack(&foo, 2, (void*)"t2", &exit);
   //threadCreateWithStack(&foo, 4, (void*)"t3", &exit);
 
   //int pid = fork();
-  write (1, "a", 1);
-  semWait(s);
+  /*semWait(s);
+  write (1, "a=", 2);
   int a = 1;
-  semSignal(s);
+  semSignal(s);*/
+
+
 
   while(1) {
     /*
