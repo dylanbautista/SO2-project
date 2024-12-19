@@ -70,6 +70,7 @@ int __attribute__ ((__section__(".text.main")))
   *c = pint;
   write(1, c, 1);
   memRegDel(fix);
+  //fix = memRegGet(2);
   write(1, c, 1);
 
   while(1) {

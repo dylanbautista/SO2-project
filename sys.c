@@ -558,23 +558,25 @@ char* sys_memRegGet(int num_pages)
   //printk("list hecho\n");
   int * tam = (int *) ((next_start_pos <<12) + sizeof(struct list_head));
   *tam = num_pages;
+  print_hex(num_pages);
 
   //printk("Retornant\n");
-  print_hex((next_start_pos << 12));
+  //print_hex((next_start_pos << 12));
   return (char*) (next_start_pos <<12) + sizeof(int) + sizeof(struct list_head);
 }
 
 int sys_memRegDel(char* m)
 {
   printk("Eliminant memoria\n");
-  print_hex((m  - sizeof(int) - sizeof(struct list_head)));
+  //print_hex((m  - sizeof(int) - sizeof(struct list_head)));
   struct list_head *l = (struct list_head *) (m  - sizeof(int) - sizeof(struct list_head));
   list_del(l);
 
   page_table_entry *PT = get_PT(current());
-  int pag = (l);
-  int * a = (l  + sizeof(struct list_head));
+  int pag = ((int)l >>12);
+  int * a = (m  - sizeof(int));
   int num_pag = *a;
+  print_hex(num_pag);
   for (int i = 0; i < num_pag; i++) {
     free_frame(get_frame(PT, pag+i));
     del_ss_pag(PT, pag+i);
