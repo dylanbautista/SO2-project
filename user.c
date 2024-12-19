@@ -1,6 +1,9 @@
 #include <libc.h>
 #include <colors.h>
 #include <screen_matrix.h>
+#include <semafors.h>
+
+int a;
 
 static char_mat ascii_art = {
 " ________  _______   ________  ________",
@@ -14,7 +17,11 @@ static char_mat ascii_art = {
 }; //Example of a very awful ASCII art...
 
 void foo(void* param) {
-  write(1, param, 2);
+  //sem_wait(&s);
+  char b;
+  itoa(a, &b);
+  write(1, &b, sizeof(b));
+  semSignal(param);
 }
 
 int __attribute__ ((__section__(".text.main")))
@@ -39,11 +46,18 @@ int __attribute__ ((__section__(".text.main")))
 
   changeColor(Blue, White);
 
-  //threadCreateWithStack(&foo, 1, (void*)"t1", &exit);
+  a = 0;
+  struct semafor *s = sem_create(0);
+
+  threadCreateWithStack(&foo, 1, (void*)s, &exit);
   //threadCreateWithStack(&foo, 2, (void*)"t2", &exit);
   //threadCreateWithStack(&foo, 4, (void*)"t3", &exit);
 
   //int pid = fork();
+  write (1, "a", 1);
+  semWait(s);
+  int a = 1;
+  semSignal(s);
 
   while(1) {
     /*

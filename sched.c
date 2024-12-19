@@ -30,10 +30,15 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 extern struct list_head blocked;
 extern struct list_head getKey_blocked;
 
+struct list_head freesem;
+
 // Free task structs
 struct list_head freequeue;
 // Ready queue
 struct list_head readyqueue;
+// Semafor
+#define num_sem 10
+struct semafor sems_free[num_sem];
 
 void init_stats(struct stats *s)
 {
@@ -228,12 +233,19 @@ void init_freequeue()
   }
 }
 
+void init_freesem() 
+{
+  INIT_LIST_HEAD(&freesem);
+  for (int i=0; i<num_sem; i++)
+    list_add_tail(&(sems_free[i].sems), &freesem);
+}
 void init_sched()
 {
   init_freequeue();
   INIT_LIST_HEAD(&readyqueue);
   INIT_LIST_HEAD(&blocked);
   INIT_LIST_HEAD(&getKey_blocked);
+  init_freesem();
 }
 
 struct task_struct* current()
@@ -288,4 +300,49 @@ void force_task_switch()
   update_process_state_rr(current(), &readyqueue);
 
   sched_next_rr();
+}
+
+// SEMÂFORS
+
+struct semafor * sys_sem_create(int value)
+{
+  if (list_empty(&freesem)) return (struct semafor *) -22; //EINVAL
+  struct semafor * s = list_entry(list_first(&freesem), struct semafor, sems);
+  list_del(list_first(&freesem));
+  s->count = value;
+  INIT_LIST_HEAD(&(s->blocked));
+  s->TID = current()->PID;
+  return s;
+}
+
+int sys_semWait(struct semafor *s)
+{
+  s->count = (s->count) - 1;
+  printk("semwait trobat\n");
+  if ((s->count) < 0) {
+    printk("bloqueado\n");
+    list_add_tail(&(current()->list), &(s->blocked));
+    sched_next_rr();
+  }
+  return 0;
+}
+
+int sys_semSignal(struct semafor *s)
+{
+  s->count = (s->count) + 1;
+  printk("sempost trobat\n");
+  if ((s->count) <= 0) {
+    printk("desbloqueando\n");
+    struct list_head *l = list_first(&(s->blocked));
+    list_del(l);
+    list_add_tail(l, &readyqueue);
+  }
+  return 0;
+}
+
+int sys_semDestroy(struct semafor * s)
+{
+  if (s->TID != current()->PID) return -12; //EACCES error
+  list_add(&(s->sems), &freesem);
+  return 0;
 }

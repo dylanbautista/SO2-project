@@ -9,6 +9,7 @@
 #include <types.h>
 #include <mm_address.h>
 #include <stats.h>
+#include <semafors.h>
 
 
 #define NR_TASKS      10

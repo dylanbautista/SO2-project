@@ -45,6 +45,49 @@ ENTRY(gotoXY)
 	popl %ebp
 	ret
 
+/* strcut semafor * sys_sem_create(struct semafor *s, int value) */
+ENTRY(sem_create)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $25, %eax
+	movl 0x8(%ebp), %ebx;	//s
+	movl 0xC(%ebp), %ecx;	//value
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+/* int sys_semWait(struct semafor *s) */
+ENTRY(semWait)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $26, %eax
+	movl 0x8(%ebp), %ebx;	//s
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+/* int sys_semSignal(struct semafor *s) */
+ENTRY(semSignal)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $27, %eax
+	movl 0x8(%ebp), %ebx;	//s
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
 /* int changeColor(color_t fg, color_t bg) */
 ENTRY(changeColor)
 	pushl %ebp
