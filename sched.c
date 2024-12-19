@@ -184,6 +184,8 @@ void init_idle (void)
 
   c->register_esp=(int)&(uc->stack[KERNEL_STACK_SIZE-2]); /* top of the stack */
 
+  if (current()->master_thread == current()->PID) current()->has_threads = 0;
+
   idle_task=c;
 }
 
@@ -198,6 +200,7 @@ void init_task1(void)
 
   c->PID=1;
   c->master_thread=1;
+  c->master_thread_address = (DWord) c;
 
   c->total_quantum=DEFAULT_QUANTUM;
 
@@ -215,6 +218,10 @@ void init_task1(void)
 
   tss.esp0=(DWord)&(uc->stack[KERNEL_STACK_SIZE]);
   setMSR(0x175, 0, (unsigned long)&(uc->stack[KERNEL_STACK_SIZE]));
+
+  //Prepare thread list, if it is needed in a future.
+  c->has_threads = 0;
+  INIT_LIST_HEAD(&c->thread_child_list);
 
   set_cr3(c->dir_pages_baseAddr);
 }

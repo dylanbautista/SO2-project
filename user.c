@@ -41,11 +41,19 @@ int __attribute__ ((__section__(".text.main")))
   
   screen_matrix_compose_char(mat, ascii_art, Yellow, Black);
 
-  screen_matrix_clrscr(mat); //Call wrapper function (avoid using strange pointer maipulation, easier)
-  //clrscr((char*) mat); //or call directly clrscr through casting... (not recommeded for the user)
+  screen_matrix_clrscr(mat); //Call wrapper function (avoid using strange pointer manipulation, easier)
+  //clrscr((char*) mat); //or call directly clrscr through casting... (not recommended for the user)
 
   changeColor(Blue, White);
 
+  threadCreateWithStack(&foo, 1, (void*)"t1", &exit);
+  threadCreateWithStack(&foo, 2, (void*)"t2", &exit);
+  threadCreateWithStack(&foo, 4, (void*)"t3", &exit);
+  
+  int pid = 0;
+  //pid = fork();
+
+  exit(); //Threads should have no time to execute (depends on quantum)
   a = 0;
   struct semafor *s = sem_create(0);
 
