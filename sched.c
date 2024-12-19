@@ -201,11 +201,8 @@ void init_task1(void)
 
   c->PID=1;
   c->master_thread=1;
-<<<<<<< HEAD
   c->master_thread_address = (DWord) c;
-=======
   INIT_LIST_HEAD(&(c->memoria));
->>>>>>> memoria
 
   c->total_quantum=DEFAULT_QUANTUM;
 
