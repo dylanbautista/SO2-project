@@ -216,6 +216,32 @@ ENTRY(threadCreateWithStack)
 	popl %ebp
 	ret
 
+/* char* memRegGet(int num_pages) */
+ENTRY(memRegGet)
+	pushl %ebp
+	mov %esp, %ebp
+	pushl %ebx
+	movl $21, %eax
+	movl 0x8(%ebp), %ebx;
+	call syscall_sysenter
+	test %eax, %eax
+	js nok
+	popl %ebp
+	ret
+
+/* int memRegDel(char* m) */
+ENTRY(memRegDel)
+	pushl %ebp
+	mov %esp, %ebp
+	pushl %ebx
+	movl $22, %eax
+	movl 0x8(%ebp), %ebx;
+	call syscall_sysenter
+	test %eax, %eax
+	js nok
+	popl %ebp
+	ret
+
 /* void block(void) */
 ENTRY(block)
 	pushl %ebp

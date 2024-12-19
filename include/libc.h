@@ -39,6 +39,10 @@ int gotoXY(int x, int y);
 
 int changeColor(int fg, int bg);
 
+char* memRegGet(int num_pages);
+
+int memRegDel(char* m);
+
 int get_stats(int pid, struct stats *st);
 
 void SAVE_REGS(void);
