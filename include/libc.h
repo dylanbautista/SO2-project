@@ -23,6 +23,8 @@ int getpid();
 
 int fork();
 
+int threadCreateWithStack( void (*function)(void* arg), int N, void* parameter, void (*ext));
+
 int getKey(char* b, int timeout);
 
 int gettime();
@@ -31,7 +33,11 @@ void exit();
 
 int yield();
 
-int clrscr(Word b[25][80]);
+int clrscr(char* b);
+
+int gotoXY(int x, int y);
+
+int changeColor(int fg, int bg);
 
 int get_stats(int pid, struct stats *st);
 

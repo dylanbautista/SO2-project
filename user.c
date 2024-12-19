@@ -11,22 +11,10 @@ static char_mat ascii_art = {
 "   |\\________\\ \\_______\\ \\_______\\____\\_\\  \\ ",
 "    \\|_______|\\|_______|\\|_______|\\_________\\",
 "                                 \\|_________|"
-};
-
-void inf() {
-  while(1);
-}
+}; //Example of a very awful ASCII art...
 
 void foo(void* param) {
-  char p = 'c';
-  write(1, &p, 1);
-}
-
-void foo2(void* param) {
-  while(1) {
-    char p = 'z';
-    write(1, &p, 1);
-  }
+  write(1, param, 2);
 }
 
 int __attribute__ ((__section__(".text.main")))
@@ -46,26 +34,25 @@ int __attribute__ ((__section__(".text.main")))
   
   screen_matrix_compose_char(mat, ascii_art, Yellow, Black);
 
-  clrscr(mat);
+  screen_matrix_clrscr(mat); //Call wrapper function (avoid using strange pointer maipulation, easier)
+  //clrscr((char*) mat); //or call directly clrscr through casting... (not recommeded for the user)
 
   changeColor(Blue, White);
 
-  threadCreateWithStack(&foo, 1, (void*)3, &exit);
-  threadCreateWithStack(&foo2, 1, (void*)3, &inf);
+  //threadCreateWithStack(&foo, 1, (void*)"t1", &exit);
+  //threadCreateWithStack(&foo, 2, (void*)"t2", &exit);
+  //threadCreateWithStack(&foo, 4, (void*)"t3", &exit);
+
+  //int pid = fork();
 
   while(1) {
-    char p = 'p';
-    write(1, &p, 1);
-    /*char *buffer = "_getKey test;\n";
-    write(1, buffer, 15);
-    char c = ' ';
-    int error = getKey(&c, 500);
-    if (error != -1) { 
-      buffer = "_got this character:";
-      write(1, buffer, 21);
-      write(1, &c, 1);
-      buffer = "\n_got outside getKey\n";
-      write(1, buffer, 22);
+    /*
+    if (pid > 0) {
+      char p = 'p';
+      write(1, &p, 1);
+    } else {
+      char p = 'P';
+      write(1, &p, 1);
     }*/
   }
 }

@@ -15,8 +15,6 @@
 
 #include <circular_buffer.h>
 
-#include <screen_matrix.h>
-
 #include <list.h>
 
 #include <p_stats.h>
@@ -118,13 +116,47 @@ int sys_fork(void)
   {
     set_ss_pag(process_PT, PAG_LOG_INIT_CODE+pag, get_frame(parent_PT, PAG_LOG_INIT_CODE+pag));
   }
+
+  int found = 0;
+  int next_start_pos = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA;
+  page_table_entry *PT = get_PT(current());
+
+  //Need to find temporal free virtual addresses.
+  while (!found) { //repeat until found. If not enoguh space, returns.
+    int pag = next_start_pos;
+    int inner_error = 0;
+    for (; pag < TOTAL_PAGES && (pag < next_start_pos + NUM_PAG_DATA); pag++) { //Check if gap is large enough
+      if(PT[pag].bits.present != 0) {
+        //Search for a new start position
+        int temp_pag = pag;
+        while (temp_pag < TOTAL_PAGES && PT[temp_pag].bits.present != 0) temp_pag++;
+        if (temp_pag >= TOTAL_PAGES) {inner_error = 1; break;} //Not enough free consecutive pages found
+        next_start_pos = temp_pag; //Start from the new position.
+        break;
+      }
+    }
+    if (pag >= TOTAL_PAGES || inner_error) {
+      /* Deallocate allocated pages. Up to pag. */
+      for (i=0; i<pag; i++)
+      {
+        free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
+        del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+      }
+      // Deallocate task_struct
+      list_add_tail(lhcurrent, &freequeue);
+      //Return error
+      return -EAGAIN;
+    }
+    if (pag >= next_start_pos + NUM_PAG_DATA) found = 1; //previous break instruction has not been reached
+  }
+
   /* Copy parent's DATA to child. We will use TOTAL_PAGES-1 as a temp logical page to map to */
   for (pag=NUM_PAG_KERNEL+NUM_PAG_CODE; pag<NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA; pag++)
   {
     /* Map one child page to parent's address space. */
-    set_ss_pag(parent_PT, pag+NUM_PAG_DATA, get_frame(process_PT, pag));
-    copy_data((void*)(pag<<12), (void*)((pag+NUM_PAG_DATA)<<12), PAGE_SIZE);
-    del_ss_pag(parent_PT, pag+NUM_PAG_DATA);
+    set_ss_pag(parent_PT, next_start_pos+(pag-NUM_PAG_KERNEL+NUM_PAG_CODE), get_frame(process_PT, pag));
+    copy_data((void*)(pag<<12), (void*)((next_start_pos+(pag-NUM_PAG_KERNEL+NUM_PAG_CODE))<<12), PAGE_SIZE);
+    del_ss_pag(parent_PT, next_start_pos+(pag-NUM_PAG_KERNEL+NUM_PAG_CODE));
   }
   /* Deny access to the child's memory space */
   set_cr3(get_DIR(current()));
@@ -189,6 +221,7 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
   //N has a suitable value (< TOTAL_PAGES - (NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA))
   if (N >= TOTAL_PAGES - (NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA)) return -EINVAL;
 
+
   //Busquem un thread a la freequeue
   if (list_empty(&freequeue)) return -ENOMEM;
 
@@ -227,7 +260,7 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
     if (pag >= next_start_pos + N) found = 1; //previous break instruction has not been reached
   }
 
-  //Busquem allotjar l'espai de 4096*N Bytes per a la User_Stack
+  //Search enough free physical addresses for the USER STACK
   int new_pag, pag;
   for (pag = 0; pag < N; ++pag) {
     new_pag = alloc_frame();
@@ -253,6 +286,8 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
   newthread->state=ST_READY;
   newthread->pending_unblocks=0;
   newthread->master_thread = current()->master_thread;
+  newthread->thread_user_stack_base_page = (DWord) (next_start_pos);
+  newthread->thread_user_stack_num_page = N;
 
   int register_ebp;		/* frame pointer */
   /* Map Parent's ebp to child's stack */
@@ -263,7 +298,7 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
 
   DWord temp_ebp=(DWord) 244003; //Random value for ebp
   /* Prepare child stack for context switch */
-  *(DWord*)(newthread->register_esp)=(DWord)&ret_from_fork;
+  *(DWord*)(newthread->register_esp)=(DWord)&ret_from_fork; //Why not?
   newthread->register_esp-=sizeof(DWord);
   *(DWord*)(newthread->register_esp)=temp_ebp;
 
@@ -279,7 +314,7 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
   copy_to_user(&ext,(void*) new_esp-4,sizeof(DWord)); //Copy exit function to thread's user stack
   copy_to_user(&parameter,(void*) new_esp,sizeof(DWord)); //Copy parameter to thread's user stack
 
-  //Afegim el thread a la readyqueue i tornem
+  //Add thread to ready queue
   u_newthread->task.state=ST_READY;
   list_add_tail(newthreadlist, &readyqueue);
 
@@ -289,9 +324,9 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
 #define TAM_BUFFER 512
 
 int sys_write(int fd, char *buffer, int nbytes) {
-char localbuffer [TAM_BUFFER];
-int bytes_left;
-int ret;
+  char localbuffer [TAM_BUFFER];
+  int bytes_left;
+  int ret;
 
 	if ((ret = check_fd(fd, ESCRIPTURA)))
 		return ret;
@@ -365,10 +400,12 @@ int sys_gettime()
   return zeos_ticks;
 }
 
-int sys_clrscr(screen_matrix b) {
+int sys_clrscr(char* b) {
+  if (!access_ok(VERIFY_READ, b, sizeof(DWord [25][80]))) return -EFAULT;
 
   if (b != NULL) {
-    clear_paint_screen(b);
+    Word (*matrix)[80] = (Word (*)[80])b;
+    clear_paint_screen(matrix);
   } else {
     clear_screen();
   }
@@ -393,24 +430,46 @@ int sys_changeColor(int fg, int bg) {
 
 void sys_exit()
 {  
-  int i;
+  if (current()->master_thread != current()->PID) { //If it is a thread
+    int i;
 
-  page_table_entry *process_PT = get_PT(current());
+    page_table_entry *process_PT = get_PT(current());
 
-  // Deallocate all the propietary physical pages
-  for (i=0; i<NUM_PAG_DATA; i++)
-  {
-    free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
-    del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+    // Deallocate all thread's user stack
+    for (i=0; i<current()->thread_user_stack_num_page; i++)
+    {
+      free_frame(get_frame(process_PT, current()->thread_user_stack_base_page+i));
+      del_ss_pag(process_PT, current()->thread_user_stack_base_page+i);
+    }
+    
+    /* Free task_struct */
+    list_add_tail(&(current()->list), &freequeue);
+    
+    current()->PID=-1;
+    
+    /* Restarts execution of the next process */
+    sched_next_rr();
+    
+  } else {
+    int i;
+
+    page_table_entry *process_PT = get_PT(current());
+
+    // Deallocate all the propietary physical pages
+    for (i=0; i<NUM_PAG_DATA; i++)
+    {
+      free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
+      del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
+    }
+    
+    /* Free task_struct */
+    list_add_tail(&(current()->list), &freequeue);
+    
+    current()->PID=-1;
+    
+    /* Restarts execution of the next process */
+    sched_next_rr();
   }
-  
-  /* Free task_struct */
-  list_add_tail(&(current()->list), &freequeue);
-  
-  current()->PID=-1;
-  
-  /* Restarts execution of the next process */
-  sched_next_rr();
 }
 
 /* System call to force a task switch */

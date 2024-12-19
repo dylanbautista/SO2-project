@@ -1,5 +1,6 @@
 #include <screen_matrix.h>
 #include <types.h>
+#include <libc.h>
 
 Word screen_matrix_format(char c, color_t fg_clr, color_t bg_clr, int blnk) {
     return (Word) (c & 0x00FF) | (((fg_clr << 8 | bg_clr << 12) & 0x7FFF) | (blnk <<  15));
@@ -42,4 +43,8 @@ void screen_matrix_init(screen_matrix sm) {
             sm[i][j] = 0;
         }
     }
+}
+
+int screen_matrix_clrscr(Word b[25][80]) {
+    return clrscr((char*) b);
 }

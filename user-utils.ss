@@ -36,8 +36,8 @@ ENTRY(gotoXY)
 	movl %esp, %ebp
 	pushl %ebx;  // Save EBX, ESI and EDI if modified
 	movl $16, %eax
-	movl 0x8(%ebp), %ecx;	//X
-	movl 0xC(%ebp), %edx;	//Y
+	movl 0x8(%ebp), %ebx;	//X
+	movl 0xC(%ebp), %ecx;	//Y
 	call syscall_sysenter
 	popl %ebx
 	test %eax, %eax
