@@ -4,9 +4,6 @@
 #include <semafors.h>
 
 int a;
-#include <semafors.h>
-
-int a;
 
 static char_mat ascii_art = {
 " ________  _______   ________  ________",
@@ -23,11 +20,6 @@ void foo(void* param) {
   //sem_wait(&s);
   char b;
   getKey(&b, 10000);
-  write(1, &b, sizeof(b));
-  semSignal(param);
-  //sem_wait(&s);
-  char b;
-  itoa(a, &b);
   write(1, &b, sizeof(b));
   semSignal(param);
 }
@@ -49,8 +41,8 @@ int __attribute__ ((__section__(".text.main")))
   
   screen_matrix_compose_char(mat, ascii_art, Yellow, Black);
 
-  screen_matrix_clrscr(mat); //Call wrapper function (avoid using strange pointer manipulation, easier)
-  //clrscr((char*) mat); //or call directly clrscr through casting... (not recommended for the user)
+  screen_matrix_clrscr(mat); //Call wrapper function (avoid using strange pointer maipulation, easier)
+  //clrscr((char*) mat); //or call directly clrscr through casting... (not recommeded for the user)
 
   changeColor(Blue, White);
 

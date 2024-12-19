@@ -20,7 +20,6 @@ enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
   int master_thread;
-  DWord master_thread_address;
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;	/* Task struct enqueuing */
   int register_esp;		/* position in the stack */
@@ -28,12 +27,8 @@ struct task_struct {
   int total_quantum;		/* Total quantum of the process */
   struct stats p_stats;		/* Process stats */
   int pending_unblocks;
-  //getkey
+  //getKey
   int key_timeout;
-  //Threading
-  int has_threads;
-  struct list_head thread_child_list; //List of children threads
-  struct list_head thread_child_anchor; //Anchor for a child TS
   DWord thread_user_stack_base_page; //Base address of the user stack (if a thread)
   int thread_user_stack_num_page; //Number of pages of the user stack (if a thread)
   //Memòria dinàmica

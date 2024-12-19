@@ -164,7 +164,6 @@ int sys_fork(void)
   uchild->task.PID=++global_PID;
   uchild->task.state=ST_READY;
   uchild->task.master_thread = uchild->task.PID;
-  uchild->task.master_thread_address = (DWord) uchild;
   uchild->task.pending_unblocks=0;
 
   int register_ebp;		/* frame pointer */
@@ -183,10 +182,6 @@ int sys_fork(void)
 
   /* Set stats to 0 */
   init_stats(&(uchild->task.p_stats));
-
-  //Prepare thread list, if it is needed in a future.
-  uchild->task.has_threads = 0;
-  INIT_LIST_HEAD(&uchild->task.thread_child_list);
 
   /* Queue child process into readyqueue */
   uchild->task.state=ST_READY;
@@ -291,7 +286,6 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
   newthread->state=ST_READY;
   newthread->pending_unblocks=0;
   newthread->master_thread = current()->master_thread;
-  newthread->master_thread_address = current()->master_thread_address;
   newthread->thread_user_stack_base_page = (DWord) (next_start_pos);
   newthread->thread_user_stack_num_page = N;
   INIT_LIST_HEAD(&(newthread->memoria));
@@ -320,11 +314,6 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
   //Prepare child thread user stack
   copy_to_user(&ext,(void*) new_esp-4,sizeof(DWord)); //Copy exit function to thread's user stack
   copy_to_user(&parameter,(void*) new_esp,sizeof(DWord)); //Copy parameter to thread's user stack
-
-  //Add thread in parent's thread list
-  if (current()->master_thread == current()->PID) current()->has_threads = 1;
-  newthread->has_threads = 0;
-  list_add(&newthread->thread_child_anchor, &((struct task_struct*) current()->master_thread_address)->thread_child_list);
 
   //Add thread to ready queue
   u_newthread->task.state=ST_READY;
@@ -440,65 +429,25 @@ int sys_changeColor(int fg, int bg) {
   return 0;
 }
 
-int sys_memRegGet(int num_pages) {
-
-  if (num_pages >= TOTAL_PAGES - (NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA)) return -EINVAL;
-
-  page_table_entry *PT = get_PT(current());
-  int found = 0;
-  int next_start_pos = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA;
-
-  while (!found) { //repeat until found. If not enoguh space, returns.
-    int pag = next_start_pos;
-    int inner_error = 0;
-    for (; pag < TOTAL_PAGES && (pag < next_start_pos + num_pages); pag++) { //Check if gap is large enough
-      if(PT[pag].bits.present != 0) {
-        //Search for a new start position
-        int temp_pag = pag;
-        while (temp_pag < TOTAL_PAGES && PT[temp_pag].bits.present != 0) temp_pag++;
-        if (temp_pag >= TOTAL_PAGES) {inner_error = 1; break;} //Not enough free consecutive pages found
-        next_start_pos = temp_pag; //Start from the new position.
-        break;
-      }
-    }
-    if (pag >= TOTAL_PAGES || inner_error) {
-      //Return error
-      return -EAGAIN;
-    }
-    if (pag >= next_start_pos + num_pages) found = 1; //previous break instruction has not been reached
-  }
-
-  int new_pag, pag;
-  for (pag = 0; pag < num_pages; ++pag) {
-    new_pag = alloc_frame();
-    if (new_pag != -1) {
-      set_ss_pag(PT, next_start_pos+pag, new_pag);
-    } else {
-      // Deallocate allocated pages. Up to pag.
-      for (int i=0; i<pag; i++)
-      {
-        free_frame(get_frame(PT, next_start_pos+i));
-        del_ss_pag(PT, next_start_pos+i);
-      }
-
-      // Return error 
-      return -EAGAIN; 
-    }
-  }
-
-  //Add info in dynamic memory data structure
-
-  return next_start_pos << 12; //Return logical address
-}
-
-int sys_memRegDel(char* m) {
-
-}
-
 void sys_exit()
 {  
   if (current()->master_thread != current()->PID) { //If it is a thread
-    terminate_thread(current());
+    int i;
+
+    page_table_entry *process_PT = get_PT(current());
+
+    // Deallocate all thread's user stack
+    for (i=0; i<current()->thread_user_stack_num_page; i++)
+    {
+      free_frame(get_frame(process_PT, current()->thread_user_stack_base_page+i));
+      del_ss_pag(process_PT, current()->thread_user_stack_base_page+i);
+    }
+    
+    /* Free task_struct */
+    list_add_tail(&(current()->list), &freequeue);
+    
+    current()->PID=-1;
+    
     /* Restarts execution of the next process */
     sched_next_rr();
     
@@ -513,18 +462,6 @@ void sys_exit()
       free_frame(get_frame(process_PT, PAG_LOG_INIT_DATA+i));
       del_ss_pag(process_PT, PAG_LOG_INIT_DATA+i);
     }
-
-    if (current()->has_threads) {
-      struct list_head * e;
-
-      //Also exit child thread execution.
-      list_for_each(e, &current()->thread_child_list) {
-        terminate_thread(list_head_to_task_struct(e));
-        INIT_LIST_HEAD(&list_head_to_task_struct(e)->thread_child_anchor);
-      }
-    }
-
-    INIT_LIST_HEAD(&current()->thread_child_list);
     
     /* Free task_struct */
     list_add_tail(&(current()->list), &freequeue);
@@ -534,23 +471,6 @@ void sys_exit()
     /* Restarts execution of the next process */
     sched_next_rr();
   }
-}
-
-void terminate_thread(struct task_struct * thread_ts) {
-  int i;
-
-  page_table_entry *thread_PT = get_PT(thread_ts);
-
-  // Deallocate all thread's user stack
-  for (i=0; i<thread_ts->thread_user_stack_num_page; i++)
-  {
-    free_frame(get_frame(thread_PT, thread_ts->thread_user_stack_base_page+i));
-    del_ss_pag(thread_PT, thread_ts->thread_user_stack_base_page+i);
-  }
-  
-  list_add_tail(&(thread_ts->list), &freequeue);
-  thread_ts->PID=-1;
-
 }
 
 /* System call to force a task switch */

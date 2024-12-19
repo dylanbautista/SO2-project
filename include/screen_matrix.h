@@ -61,7 +61,10 @@ color_t screen_matrix_getColor(const screen_matrix matrix, int x, int y);
  */
 char screen_matrix_getChar(const screen_matrix matrix, int x, int y);
 
+
+
 int screen_matrix_clrscr(Word b[25][80]);
+
 
 #endif
 
