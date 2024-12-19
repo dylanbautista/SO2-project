@@ -59,7 +59,7 @@ int __attribute__ ((__section__(".text.main")))
   int a = 1;
   semSignal(s);*/
 
-
+  char * c = memRegGet(1);
 
   while(1) {
     /*

@@ -501,7 +501,7 @@ int sys_get_stats(int pid, struct stats *st)
 }
 
 
-char* memRegGet(int num_pages)
+char* sys_memRegGet(int num_pages)
 {
   page_table_entry *PT = get_PT(current());
   if (num_pages < 0) return (char*)-EINVAL;
@@ -510,6 +510,7 @@ char* memRegGet(int num_pages)
   int found = 0;
   int next_start_pos = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA;
 
+  printk("Buscant memoria\n");
   while (!found) { //repeat until found. If not enoguh space, returns.
     int pag = next_start_pos;
     int inner_error = 0;
@@ -530,6 +531,8 @@ char* memRegGet(int num_pages)
     if (pag >= next_start_pos + num_pages) found = 1; //previous break instruction has not been reached
   }
 
+  printk("Assignant memoria\n");
+
   //Search enough free physical addresses for the USER STACK
   int new_pag, pag;
   for (pag = 0; pag < num_pages; ++pag) {
@@ -548,15 +551,18 @@ char* memRegGet(int num_pages)
     }
   }
 
-  
+  struct list_head list;
+  copy_to_user(&list,(void*) (next_start_pos <<12 + sizeof(int),sizeof(struct list_head)));
   int * tam = (int *) (next_start_pos <<12);
   *tam = num_pages;
-  list_add_tail((struct list_head *) (next_start_pos <<12), &(current()->memoria));
+   = next_start_pos <<12 + sizeof(int);
+  list_add_tail(list, &(current()->memoria));
 
+  printk("Retornant\n");
   return (char*) (next_start_pos <<12);
 }
 
-int memRegDel(char* m)
+int sys_memRegDel(char* m)
 {
   struct list_head *l = (struct list_head *) (m - sizeof(int));
   list_del(l);
