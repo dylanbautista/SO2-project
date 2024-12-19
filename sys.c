@@ -440,61 +440,6 @@ int sys_changeColor(int fg, int bg) {
   return 0;
 }
 
-int sys_memRegGet(int num_pages) {
-
-  if (num_pages >= TOTAL_PAGES - (NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA)) return -EINVAL;
-
-  page_table_entry *PT = get_PT(current());
-  int found = 0;
-  int next_start_pos = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA;
-
-  while (!found) { //repeat until found. If not enoguh space, returns.
-    int pag = next_start_pos;
-    int inner_error = 0;
-    for (; pag < TOTAL_PAGES && (pag < next_start_pos + num_pages); pag++) { //Check if gap is large enough
-      if(PT[pag].bits.present != 0) {
-        //Search for a new start position
-        int temp_pag = pag;
-        while (temp_pag < TOTAL_PAGES && PT[temp_pag].bits.present != 0) temp_pag++;
-        if (temp_pag >= TOTAL_PAGES) {inner_error = 1; break;} //Not enough free consecutive pages found
-        next_start_pos = temp_pag; //Start from the new position.
-        break;
-      }
-    }
-    if (pag >= TOTAL_PAGES || inner_error) {
-      //Return error
-      return -EAGAIN;
-    }
-    if (pag >= next_start_pos + num_pages) found = 1; //previous break instruction has not been reached
-  }
-
-  int new_pag, pag;
-  for (pag = 0; pag < num_pages; ++pag) {
-    new_pag = alloc_frame();
-    if (new_pag != -1) {
-      set_ss_pag(PT, next_start_pos+pag, new_pag);
-    } else {
-      // Deallocate allocated pages. Up to pag.
-      for (int i=0; i<pag; i++)
-      {
-        free_frame(get_frame(PT, next_start_pos+i));
-        del_ss_pag(PT, next_start_pos+i);
-      }
-
-      // Return error 
-      return -EAGAIN; 
-    }
-  }
-
-  //Add info in dynamic memory data structure
-
-  return next_start_pos << 12; //Return logical address
-}
-
-int sys_memRegDel(char* m) {
-
-}
-
 void sys_exit()
 {  
   if (current()->master_thread != current()->PID) { //If it is a thread
