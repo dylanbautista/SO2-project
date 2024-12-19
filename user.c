@@ -59,7 +59,18 @@ int __attribute__ ((__section__(".text.main")))
   int a = 1;
   semSignal(s);*/
 
-  char * c = memRegGet(1);
+  char * fix = memRegGet(2);
+  char * c = fix;
+  char pint = 'a';
+  while (pint != 'z') {
+    *c = pint++;
+    write(1, c, 1);
+    c++;
+  }
+  *c = pint;
+  write(1, c, 1);
+  memRegDel(fix);
+  write(1, c, 1);
 
   while(1) {
     /*

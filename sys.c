@@ -288,6 +288,7 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
   newthread->master_thread = current()->master_thread;
   newthread->thread_user_stack_base_page = (DWord) (next_start_pos);
   newthread->thread_user_stack_num_page = N;
+  INIT_LIST_HEAD(&(newthread->memoria));
 
   int register_ebp;		/* frame pointer */
   /* Map Parent's ebp to child's stack */
@@ -510,7 +511,7 @@ char* sys_memRegGet(int num_pages)
   int found = 0;
   int next_start_pos = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA;
 
-  printk("Buscant memoria\n");
+  //printk("Buscant memoria\n");
   while (!found) { //repeat until found. If not enoguh space, returns.
     int pag = next_start_pos;
     int inner_error = 0;
@@ -531,7 +532,7 @@ char* sys_memRegGet(int num_pages)
     if (pag >= next_start_pos + num_pages) found = 1; //previous break instruction has not been reached
   }
 
-  printk("Assignant memoria\n");
+  //printk("Assignant memoria\n");
 
   //Search enough free physical addresses for the USER STACK
   int new_pag, pag;
@@ -551,29 +552,33 @@ char* sys_memRegGet(int num_pages)
     }
   }
 
-  struct list_head list;
-  copy_to_user(&list,(void*) (next_start_pos <<12 + sizeof(int),sizeof(struct list_head)));
-  int * tam = (int *) (next_start_pos <<12);
-  *tam = num_pages;
-   = next_start_pos <<12 + sizeof(int);
+  struct list_head *list = (struct list_head *) (next_start_pos <<12);
+  INIT_LIST_HEAD(list);
   list_add_tail(list, &(current()->memoria));
+  //printk("list hecho\n");
+  int * tam = (int *) ((next_start_pos <<12) + sizeof(struct list_head));
+  *tam = num_pages;
 
-  printk("Retornant\n");
-  return (char*) (next_start_pos <<12);
+  //printk("Retornant\n");
+  print_hex((next_start_pos << 12));
+  return (char*) (next_start_pos <<12) + sizeof(int) + sizeof(struct list_head);
 }
 
 int sys_memRegDel(char* m)
 {
-  struct list_head *l = (struct list_head *) (m - sizeof(int));
+  printk("Eliminant memoria\n");
+  print_hex((m  - sizeof(int) - sizeof(struct list_head)));
+  struct list_head *l = (struct list_head *) (m  - sizeof(int) - sizeof(struct list_head));
   list_del(l);
 
   page_table_entry *PT = get_PT(current());
-  int pag = ((int)m>>12);
-  int * a = ((int)m>>12);
+  int pag = (l);
+  int * a = (l  + sizeof(struct list_head));
   int num_pag = *a;
-  for (int i = 0; i < num_pag; ++i) {
+  for (int i = 0; i < num_pag; i++) {
     free_frame(get_frame(PT, pag+i));
     del_ss_pag(PT, pag+i);
   }
+  set_cr3(get_DIR(current()));
   return 0;
 }
