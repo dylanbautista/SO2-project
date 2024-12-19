@@ -172,6 +172,7 @@ void init_idle (void)
 
   c->PID=0;
   c->master_thread=0;
+  INIT_LIST_HEAD(&(c->memoria));
 
   c->total_quantum=DEFAULT_QUANTUM;
 
@@ -200,7 +201,11 @@ void init_task1(void)
 
   c->PID=1;
   c->master_thread=1;
+<<<<<<< HEAD
   c->master_thread_address = (DWord) c;
+=======
+  INIT_LIST_HEAD(&(c->memoria));
+>>>>>>> memoria
 
   c->total_quantum=DEFAULT_QUANTUM;
 
@@ -246,6 +251,7 @@ void init_freesem()
   for (int i=0; i<num_sem; i++)
     list_add_tail(&(sems_free[i].sems), &freesem);
 }
+
 void init_sched()
 {
   init_freequeue();

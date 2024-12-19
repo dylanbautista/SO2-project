@@ -294,6 +294,7 @@ int sys_threadCreateWithStack( void (*function)(void* arg), int N, void* paramet
   newthread->master_thread_address = current()->master_thread_address;
   newthread->thread_user_stack_base_page = (DWord) (next_start_pos);
   newthread->thread_user_stack_num_page = N;
+  INIT_LIST_HEAD(&(newthread->memoria));
 
   int register_ebp;		/* frame pointer */
   /* Map Parent's ebp to child's stack */
@@ -578,4 +579,88 @@ int sys_get_stats(int pid, struct stats *st)
     }
   }
   return -ESRCH; /*ESRCH */
+}
+
+
+char* sys_memRegGet(int num_pages)
+{
+  page_table_entry *PT = get_PT(current());
+  if (num_pages < 0) return (char*)-EINVAL;
+  ++num_pages;
+
+  int found = 0;
+  int next_start_pos = NUM_PAG_KERNEL+NUM_PAG_CODE+NUM_PAG_DATA;
+
+  //printk("Buscant memoria\n");
+  while (!found) { //repeat until found. If not enoguh space, returns.
+    int pag = next_start_pos;
+    int inner_error = 0;
+    for (; pag < TOTAL_PAGES && (pag < next_start_pos + num_pages); pag++) { //Check if gap is large enough
+      if(PT[pag].bits.present != 0) {
+        //Search for a new start position
+        int temp_pag = pag;
+        while (temp_pag < TOTAL_PAGES && PT[temp_pag].bits.present != 0) temp_pag++;
+        if (temp_pag >= TOTAL_PAGES) {inner_error = 1; break;} //Not enough free consecutive pages found
+        next_start_pos = temp_pag; //Start from the new position.
+        break;
+      }
+    }
+    if (pag >= TOTAL_PAGES || inner_error) {
+      //Return error
+      return (char*) -EAGAIN;
+    }
+    if (pag >= next_start_pos + num_pages) found = 1; //previous break instruction has not been reached
+  }
+
+  //printk("Assignant memoria\n");
+
+  //Search enough free physical addresses for the USER STACK
+  int new_pag, pag;
+  for (pag = 0; pag < num_pages; ++pag) {
+    new_pag = alloc_frame();
+    if (new_pag != -1) {
+      set_ss_pag(PT, next_start_pos+pag, new_pag);
+    } else {
+      // Deallocate allocated pages. Up to pag.
+      for (int i=0; i<pag; i++)
+      {
+        free_frame(get_frame(PT, next_start_pos+i));
+        del_ss_pag(PT, next_start_pos+i);
+      }
+      // Return error 
+      return (char*) -EAGAIN; 
+    }
+  }
+
+  struct list_head *list = (struct list_head *) (next_start_pos <<12);
+  INIT_LIST_HEAD(list);
+  list_add_tail(list, &(current()->memoria));
+  //printk("list hecho\n");
+  int * tam = (int *) ((next_start_pos <<12) + sizeof(struct list_head));
+  *tam = num_pages;
+  print_hex(num_pages);
+
+  //printk("Retornant\n");
+  //print_hex((next_start_pos << 12));
+  return (char*) (next_start_pos <<12) + sizeof(int) + sizeof(struct list_head);
+}
+
+int sys_memRegDel(char* m)
+{
+  printk("Eliminant memoria\n");
+  //print_hex((m  - sizeof(int) - sizeof(struct list_head)));
+  struct list_head *l = (struct list_head *) (m  - sizeof(int) - sizeof(struct list_head));
+  list_del(l);
+
+  page_table_entry *PT = get_PT(current());
+  int pag = ((int)l >>12);
+  int * a = (m  - sizeof(int));
+  int num_pag = *a;
+  print_hex(num_pag);
+  for (int i = 0; i < num_pag; i++) {
+    free_frame(get_frame(PT, pag+i));
+    del_ss_pag(PT, pag+i);
+  }
+  set_cr3(get_DIR(current()));
+  return 0;
 }

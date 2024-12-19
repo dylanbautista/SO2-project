@@ -36,6 +36,8 @@ struct task_struct {
   struct list_head thread_child_anchor; //Anchor for a child TS
   DWord thread_user_stack_base_page; //Base address of the user stack (if a thread)
   int thread_user_stack_num_page; //Number of pages of the user stack (if a thread)
+  //Memòria dinàmica
+  struct list_head memoria;
 };
 
 union task_union {

@@ -88,6 +88,34 @@ ENTRY(semSignal)
 	popl %ebp
 	ret
 
+/* char* sys_memRegGet(int num_pages) */
+ENTRY(memRegGet)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $30, %eax
+	movl 0x8(%ebp), %ebx;	//num_pages
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
+/* int sys_memRegDel(char* m) */
+ENTRY(memRegDel)
+	pushl %ebp
+	movl %esp, %ebp
+	pushl %ebx;  // Save EBX, ESI and EDI if modified
+	movl $31, %eax
+	movl 0x8(%ebp), %ebx;	//m
+	call syscall_sysenter
+	popl %ebx
+	test %eax, %eax
+	js nok	// if (eax < 0) -> 
+	popl %ebp
+	ret
+
 /* int changeColor(color_t fg, color_t bg) */
 ENTRY(changeColor)
 	pushl %ebp
