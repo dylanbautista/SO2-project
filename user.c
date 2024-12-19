@@ -4,6 +4,9 @@
 #include <semafors.h>
 
 int a;
+#include <semafors.h>
+
+int a;
 
 static char_mat ascii_art = {
 " ________  _______   ________  ________",
@@ -17,6 +20,11 @@ static char_mat ascii_art = {
 }; //Example of a very awful ASCII art...
 
 void foo(void* param) {
+  //sem_wait(&s);
+  char b;
+  itoa(a, &b);
+  write(1, &b, sizeof(b));
+  semSignal(param);
   //sem_wait(&s);
   char b;
   itoa(a, &b);
@@ -46,14 +54,6 @@ int __attribute__ ((__section__(".text.main")))
 
   changeColor(Blue, White);
 
-  threadCreateWithStack(&foo, 1, (void*)"t1", &exit);
-  threadCreateWithStack(&foo, 2, (void*)"t2", &exit);
-  threadCreateWithStack(&foo, 4, (void*)"t3", &exit);
-  
-  int pid = 0;
-  //pid = fork();
-
-  exit(); //Threads should have no time to execute (depends on quantum)
   a = 0;
   struct semafor *s = sem_create(0);
 
